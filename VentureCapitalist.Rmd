@@ -1,0 +1,124 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Linear regression Model to find the amount of influence on profit by other parameters for a startup company.
+
+load the file 50-startups.csv and save it as startup dataframe.
+
+```{r}
+View(startup)
+head(startup)
+dim(startup)
+rownames(startup)
+colnames(startup)
+str(startup)
+summary(startup)
+```
+
+#Let's start with Exploratory data analysis now
+
+```{r}
+attach(startup)
+hist(R.D.Spend)
+```
+
+# we can observe that between 60000 to 80000 more companies are investing that much of amount for research and development
+
+```{r}
+Profit
+cor(Profit,R.D.Spend) # we get 0.9729005 which is positive correlation between the profit and R.D.Spend
+```
+
+
+# Visualisation of variables
+```{r}
+plot(R.D.Spend,Profit) # here R.D.Spend is on x axis independent variable and Profit on y axis as it is dependent variable
+# here profit depends on R.D.Spend
+plot(Administration,Profit)
+cor(Administration,Profit)
+plot(Profit,Administration)
+
+# always plot profit as dependent variable on y-axis and independent variables on x-axis
+
+plot(Marketing.Spend,Profit)
+
+plot(State,Profit)
+
+print(State)
+
+str(startup) # only state is in factor
+
+```
+
+# In linear regression model, we can only get insights for numerical startup type quantities but not for textual so we need to convert the factor to numeric
+# It means we need to convert narrow format of state column to wide format. we can do that simply by considering dummies.
+
+
+```{r}
+startup$DummyNY <- ifelse(State=="New York",1,0)
+startup$DummyNY
+
+head(startup)
+
+str(startup)
+
+# we can remove State column as we got dummyNY column
+
+startup$State <- NULL
+
+head(startup)
+pairs(startup)
+
+library(corrgram)
+corrgram(startup)
+
+library(GGally)
+ggpairs(startup)
+
+```
+
+# Model Building
+
+```{r}
+multReg <- lm(Profit~R.D.Spend+Administration+Marketing.Spend+DummyNY,startup)
+summary(multReg)
+# Multiple R-squared:  0.951,	Adjusted R-squared:  0.9467
+```
+# Remove variables with highest p-value(>0.05)
+# Remove Administration variable and check for R-squared value and adjusted R-squared value 
+```{r}
+multReg1 <- lm(Profit~R.D.Spend+Marketing.Spend+DummyNY,startup)
+summary(multReg1)
+# Multiple R-squared:  0.9508,	Adjusted R-squared:  0.9476
+```
+# Remove variable with high p-value(>0.05)
+# Remove DummyNY
+```{r}
+multReg2 <- lm(Profit~R.D.Spend+Marketing.Spend,startup)
+summary(multReg2)
+# Multiple R-squared:  0.9505,	Adjusted R-squared:  0.9483
+```
+# Now let's remove Marketing.Spend and check R-squared and adjusted R-squared values
+```{r}
+multReg3 <- lm(Profit~R.D.Spend,startup)
+summary(multReg3)
+# Multiple R-squared:  0.9465,	Adjusted R-squared:  0.9454 
+# observe the values of R-squared and adjusted R-squared
+# R-squared decreases with decrease in number of independent variables, so more independent variables more R-Squared
+# Adjusted R-squared value initially increases but finally decreases
+# fit the model with high adjusted R-Squared 
+```
+# we can see that R-squared and Adjusted R-squared values dropped significantly so we can't neglect Marketing.Spend variable as it has p-value only slightly higher.
+
+# So Final model:-
+```{r}
+multReg <- lm(Profit~R.D.Spend+Marketing.Spend,startup)
+summary(multReg)
+```
+# Visualisation of final model
+```{r}
+plot(multReg)
+```
+
