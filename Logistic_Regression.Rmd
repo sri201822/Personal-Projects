@@ -1,0 +1,288 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Here we have a data from a bank and they want to know the customers that are likely default on payment.
+
+#Load the file 'Log-Reg-Case-Study.csv' and save it as data
+
+```{r}
+View(data)
+head(data)
+```
+
+```{r}
+summary(data)
+str(data)
+```
+```{r}
+sum(is.na(data))
+```
+
+# Exploratory Data Analysis
+# Univariate Analysis
+
+```{r}
+summary(data$Age)
+boxplot(data$Age)
+quantile(data$Age,0.995) # 99.5th percentile value
+quantile(data$Age,0.999) # 99.9th percentile value
+max(data$Age)
+```
+
+# so in 99.9th percentile the age is 75 and in 0.001 somewhere it has maximum age as 85
+# Let's do outlier capping
+# if condition age >75 cap it to 75
+```{r}
+data$Age <- ifelse(data$Age>75,75,data$Age)
+summary(data$Age)
+max(data$Age)
+```
+# adjusted maximum value in age so as to prevent the outlier problem
+
+# now lets fill the blanks or missing values in categorical variables like housing
+# if the missing value is in categorical variable we need to replace it with mode
+# if the missing value is in numerical variable replace it with mean/median appropriately
+
+```{r}
+summary(data$Housing)
+# 9 blanks here 
+# check for mode we can see that A152 has higher mode so lets replace blanks with it
+```
+```{r}
+data$Housing[data$Housing==""]<-"A152"
+summary(data$Housing)
+# all blanks are replaced 
+```
+
+# Bivariate Analysis
+
+```{r}
+summary(data$Num_Dependents)
+table(data$Num_Dependents,data$Default_On_Payment)
+aggregate(data$Num_Dependents,by=list(data$Num_Dependents,data$Default_On_Payment),length)
+
+
+# missing value imputation ( BiVariant analysis)
+table(data$Job_Status,data$Default_On_Payment)
+levels(data$Job_Status)
+aggregate(data$Job_Status,by=list(data$Job_Status,data$Default_On_Payment),length)
+summary(data$Job_Status)
+```
+```{r}
+# now replace the blanks with highest percentage of category rather than with absolute values 
+# we used absolute values i mean mode for univarient analysis
+
+# for Bivarient analysis we need to go with highest percentage rather than by mode
+# here for job status the highest percentage for default is A174
+#so lets replace blanks with that value of A174
+
+data$Job_Status[data$Job_Status==""]<-"A174"
+summary(data$Job_Status)
+str(data$Job_Status)
+```
+# now all the categorical independent variable have to be converted into numeric so that we can plot or to create model
+
+# Grouping for dummy variable creation
+# here dummmy variable converts categorical data to numeric
+# if there are 10 independent category variables 9 dummy variables are needed generally but we can group the varaiables to get few dummy variables for easy analysis
+
+# Dummy variables for job_status
+```{r}
+summary(data$Job_Status)
+
+# we can see there are 4 variablesand 3 dummy Variables as below:-
+data$Dummy_Job_Status_A171 <- ifelse(data$Job_Status=="A171",1,0)
+data$Dummy_Job_Status_A172 <- ifelse(data$Job_Status=="A172",1,0)
+data$Dummy_Job_Status_A173 <- ifelse(data$Job_Status=="A173",1,0)
+```
+# Dummy Variables for Purpose_Credit_taken
+```{r}
+table(data$Purpose_Credit_Taken,data$Default_On_Payment)
+# 10 categorial levels here we actually need to create 9 dummy variables but instead on observation we can make it into groups as below:-
+# but we are here classifying it as high,low
+
+data$Dummy_Purpose_Credit_Taken_Low <- ifelse(data$Purpose_Credit_Taken=="P41"| data$Purpose_Credit_Taken=="P43"|data$Purpose_Credit_Taken=="P48",1,0)
+data$Dummy_Purpose_Credit_Taken_High <- ifelse(data$Purpose_Credit_Taken=="P49"|data$Purpose_Credit_Taken=="P40"|
+                                                      data$Purpose_Credit_Taken=="P45"|data$Purpose_Credit_Taken=="P50"|data$Purpose_Credit_Taken=="P46",1,0)
+```
+# Dummy variable for status checking account :- 2 variables high,medium
+```{r}
+table(data$Status_Checking_Accnt,data$Default_On_Payment)
+data$Dummy_Status_Checking_Accnt_High <- ifelse(data$Status_Checking_Accnt=="S11",1,0)
+data$Dummy_Status_Checking_Accnt_Medium <- ifelse(data$Status_Checking_Accnt=="S12",1,0)
+summary(data$Status_Checking_Accnt)
+```
+
+# Dummy Variables for Credit_History:- high or low
+```{r}
+table(data$Credit_History,data$Default_On_Payment)
+# 5 categorical variables
+data$Dummy_Credit_History_High <- ifelse(data$Credit_History=="A30"|data$Credit_History=="A31",1,0)
+data$Dummy_Credit_History_Low <- ifelse(data$Credit_History=="A34",1,0)
+```
+# Dummy Variables for Years_At_Present_Employment :- high or medium
+```{r}
+table(data$Years_At_Present_Employment,data$Default_On_Payment)
+data$Dummy_Years_At_Present_Employment_High <- ifelse(data$Years_At_Present_Employment=="E71"| data$Years_At_Present_Employment=="E72",1,0)
+data$Dummy_Years_At_Present_Employment_Medium <- ifelse(data$Years_At_Present_Employment=="E73",1,0)
+```
+# Dummy variables for Marital_Status_Gender
+```{r}
+table(data$Marital_Status_Gender,data$Default_On_Payment)
+data$Dummy_Marital_status_Gender <- ifelse(data$Marital_Status_Gender=="A91"|data$Marital_Status_Gender=="A92",1,0)
+```
+# Dummy variable for Other_Debtors_Guarantors
+```{r}
+table(data$Other_Debtors_Guarantors,data$Default_On_Payment)
+data$Dummy_Other_Debtors_Guarantors <- ifelse(data$Other_Debtors_Guarantors=="A103",0,1)
+# note here we took 0,1 instead of 1,0
+```
+
+# Dummy Variable for housing
+```{r}
+summary(data$Housing)
+data$Dummy_Housing <- ifelse(data$Housing=="A152",0,1)
+```
+# Dummy Variable for Foreign worker
+```{r}
+data$Dummy_Foreign_Worker <- ifelse(data$Foreign_Worker=="A201",1,0)
+```
+
+# convert numeric varibles to dummy variables (Grouping numeric variables like age)
+# if age is less than 30 take it as default on payment
+```{r}
+table(data$Age,data$Default_On_Payment)
+data$Dummy_Age_Group <- ifelse(data$Age<30,1,0)
+```
+# Dummy Variable for credit_amount
+# if the credit amount is less than 5000 take it as not defaulted in payment
+```{r}
+data$Dummy_Credit_Amount <- ifelse(data$Credit_Amount<5000,0,1)
+```
+# Dummy variable for current address in years
+```{r}
+data$Dummy_Current_Address_Yrs <- ifelse(data$Current_Address_Yrs==1,0,1)
+```
+# Num_credits and Num_Dependents do not show significant relationship with the dependent variable
+```{r}
+View(data)
+```
+
+# Model Building
+# Split data into 70% train and 30% test
+
+```{r}
+set.seed(123) # to reproduce the same sample again
+train=sample(1:nrow(data),nrow(data)*0.7)
+test=-train
+ModelData=data[train,]
+head(ModelData)
+
+# 70% of total data indices we have selected using train is placed in ModelData now
+nrow(ModelData)
+
+# to assign remaining 30% data to VaqlidationData can be done as below
+# method 1:-
+ValidationData=data[test,]
+nrow(ValidationData)
+```
+# Model Building
+```{r}
+library('MASS')
+library(car)
+#lm stands for linear model
+# all variables to be analysed are to be included in the equation,with dataset's name at the end
+model_1 <- glm(Default_On_Payment~Dummy_Job_Status_A171+Dummy_Job_Status_A172+Dummy_Job_Status_A173+Dummy_Purpose_Credit_Taken_High+Dummy_Purpose_Credit_Taken_Low+
+                   Dummy_Status_Checking_Accnt_High+Dummy_Status_Checking_Accnt_Medium+Dummy_Credit_History_High+Dummy_Credit_History_Low+Dummy_Years_At_Present_Employment_High+
+                   Dummy_Years_At_Present_Employment_Medium+Dummy_Marital_status_Gender+Dummy_Other_Debtors_Guarantors+Dummy_Housing+Dummy_Foreign_Worker+Dummy_Age_Group+
+                   Dummy_Credit_Amount+Dummy_Current_Address_Yrs+Duration_in_Months,family=binomial(logit),data=ModelData)
+summary(model_1)
+vif(model_1)
+```
+
+# vif value should be less than 2. here we can see that there are 2 variables with vif > 2 so we need to remove one variable
+# here vif() output is high for 2 variables Dummy_Job_Status_A172 and Dummy_Job_Status_A173
+# so one variable will be removed
+
+# perform regression on both variable and remove the model with less R-squared value
+```{r}
+Multicoll_out1 <- lm(Default_On_Payment~Dummy_Job_Status_A172,data=ModelData)
+summary(Multicoll_out1)
+
+Multicoll_out2 <- lm(Default_On_Payment~Dummy_Job_Status_A173,data=ModelData)
+summary(Multicoll_out2)
+# so now remove Dummy_Job_Status_A173 and repeat vif
+```
+
+```{r}
+model_2<- glm(Default_On_Payment~Dummy_Job_Status_A171+Dummy_Job_Status_A172+Dummy_Purpose_Credit_Taken_High+Dummy_Purpose_Credit_Taken_Low+
+                   Dummy_Status_Checking_Accnt_High+Dummy_Status_Checking_Accnt_Medium+Dummy_Credit_History_High+Dummy_Credit_History_Low+Dummy_Years_At_Present_Employment_High+
+                   Dummy_Years_At_Present_Employment_Medium+Dummy_Marital_status_Gender+Dummy_Other_Debtors_Guarantors+Dummy_Housing+Dummy_Foreign_Worker+Dummy_Age_Group+
+                   Dummy_Credit_Amount+Dummy_Current_Address_Yrs+Duration_in_Months,family=binomial(logit),data=ModelData)
+summary(model_2)
+vif(model_2)
+```
+
+# All the variables have vif < 2. Now eleminate insignificant variables (p-value > 0.05) one by one
+
+# Remove Dummy_Job_Status_A172 as it has highest P-value
+```{r}
+model_3 <-glm(Default_On_Payment ~ Dummy_Job_Status_A171+ 
+    Dummy_Purpose_Credit_Taken_High + Dummy_Purpose_Credit_Taken_Low + 
+    Dummy_Status_Checking_Accnt_High + Dummy_Status_Checking_Accnt_Medium + 
+    Dummy_Credit_History_High + Dummy_Credit_History_Low + Dummy_Years_At_Present_Employment_High + 
+    Dummy_Years_At_Present_Employment_Medium + Dummy_Marital_status_Gender + 
+    Dummy_Other_Debtors_Guarantors + Dummy_Housing + Dummy_Foreign_Worker + 
+    Dummy_Age_Group + Dummy_Credit_Amount + Dummy_Current_Address_Yrs + 
+    Duration_in_Months, family = binomial(logit), data = ModelData)
+summary(model_3)
+```
+
+# Remove Dummy_Credit_Amount as it is highly insignificant
+```{r}
+model_4 <-glm(Default_On_Payment ~ Dummy_Job_Status_A171+ 
+    Dummy_Purpose_Credit_Taken_High + Dummy_Purpose_Credit_Taken_Low + 
+    Dummy_Status_Checking_Accnt_High + Dummy_Status_Checking_Accnt_Medium + 
+    Dummy_Credit_History_High + Dummy_Credit_History_Low + Dummy_Years_At_Present_Employment_High + 
+    Dummy_Years_At_Present_Employment_Medium + Dummy_Marital_status_Gender + 
+    Dummy_Other_Debtors_Guarantors + Dummy_Housing + Dummy_Foreign_Worker + 
+    Dummy_Age_Group + Dummy_Current_Address_Yrs + 
+    Duration_in_Months, family = binomial(logit), data = ModelData)
+summary(model_4)
+```
+
+# Remove Dummy_Purpose_Credit_Taken_Low as it is insignificant
+```{r}
+model_5 <-glm(Default_On_Payment ~ Dummy_Job_Status_A171+ 
+    Dummy_Purpose_Credit_Taken_High + 
+    Dummy_Status_Checking_Accnt_High + Dummy_Status_Checking_Accnt_Medium + 
+    Dummy_Credit_History_High + Dummy_Credit_History_Low + Dummy_Years_At_Present_Employment_High + 
+    Dummy_Years_At_Present_Employment_Medium + Dummy_Marital_status_Gender + 
+    Dummy_Other_Debtors_Guarantors + Dummy_Housing + Dummy_Foreign_Worker + 
+    Dummy_Age_Group + Dummy_Current_Address_Yrs + 
+    Duration_in_Months, family = binomial(logit), data = ModelData)
+summary(model_5)
+```
+
+# Model Validation
+
+```{r}
+ValidationData$Predicted_Probability <- predict(model_5,ValidationData[,-17],type="response")
+ValidationData$Predicted_Probability<-round(ValidationData$Predicted_Probability,2)
+View(ValidationData)
+```
+
+# create the final flag-prediction based on probability for model and validation datasets
+# Here if the probability is greater than 30% then consider that the customer defaults on payment
+# threshold value is given by the bank.
+```{r}
+ValidationData$Final_Prediction <- ifelse(ValidationData$Predicted_Probability>0.30,1,0)
+table(ValidationData$Default_On_Payment,ValidationData$Final_Prediction)
+conf <- confusionMatrix(ValidationData$Final_Prediction,ValidationData$Default_On_Payment)
+conf
+```
+# Final accuracy is 72%
+# Sensitivity is 72.34%
+# Specificity is 71.28% for cut-off=0.30
